@@ -3,6 +3,28 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+# v2.1.4
+## (2025-07-29)
+
+* patch: fix ubuntu 24 build and flash issues - bump electron-forge to 7.8.1 - bump electron to 37.2.4 - stop producing broken appimage [Edwin Joassart]
+* patch: fix windows build and flash issues - downgrade flasher's node to 20.11.1 on windows - bump windows GHA runner to 2022 - bump winusb-driver-generator to 2.1.9 [Edwin Joassart]
+* patch: refactor permission code [Edwin Joassart]
+
+# v2.1.3
+## (2025-05-15)
+
+* Remove stale secrets [Anton Belodedenko]
+
+# v2.1.2
+## (2025-05-08)
+
+* patch: remove analytics [Edwin Joassart]
+
+# v2.1.1
+## (2025-05-05)
+
+* patch: fix signin windows artifacts [Edwin Joassart]
+
 # v2.1.0
 ## (2025-02-27)
 
