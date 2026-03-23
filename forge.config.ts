@@ -18,6 +18,13 @@ const osxSigningConfig: any = {};
 let winSigningConfig: any = {};
 
 if (process.env.NODE_ENV === 'production') {
+	osxSigningConfig.osxSign = {
+		optionsForFile: () => ({
+			entitlements: './entitlements.mac.plist',
+			hardenedRuntime: true,
+		}),
+	};
+
 	osxSigningConfig.osxNotarize = {
 		tool: 'notarytool',
 		appleId: process.env.XCODE_APP_LOADER_EMAIL,
@@ -45,12 +52,6 @@ const config: ForgeConfig = {
 			'lib/shared/sudo/sudo-askpass.osascript-zh.js',
 			'lib/shared/sudo/sudo-askpass.osascript-en.js',
 		],
-		osxSign: {
-			optionsForFile: () => ({
-				entitlements: './entitlements.mac.plist',
-				hardenedRuntime: true,
-			}),
-		},
 		...osxSigningConfig,
 	},
 	rebuildConfig: {

@@ -1,0 +1,108 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+# Cancel in-progress runs for the same PR/branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.19'
+          cache: npm
+
+      - name: Install host dependencies
+        run: |
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends libudev-dev
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run lint
+        run: npm run lint
+
+  build:
+    name: Build (${{ matrix.os }})
+    needs: lint
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+    strategy:
+      matrix:
+        os: [ubuntu-22.04, windows-2022, macos-13]
+      fail-fast: false
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        if: runner.os == 'macOS'
+        # FIXME: Python 3.12 dropped distutils that node-gyp depends upon.
+        # This is a temporary workaround to make the job use Python 3.11 until
+        # we update to npm 10+.
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.19'
+          cache: npm
+
+      - name: Install host dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends xvfb libudev-dev
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Windows native dependencies
+        if: runner.os == 'Windows'
+        shell: bash
+        run: npm i -D winusb-driver-generator
+
+      - name: Patch pkg-fetch for Windows compatibility
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          # need to modify @yao-pkg/pkg-fetch expected-shas.json and patches.json files
+          # to force use of nodejs v20.11.1 instead of latest minor.
+          # This is required for Windows compatibility as 20.15.1 introduced a regression
+          # that breaks the flasher on Windows.
+          # See: https://github.com/nodejs/node/pull/55623
+
+          # Add entry to expected-shas.json
+          sed -i 's/}$/,\n  "node-v20.11.1-win-x64": "140c377c2c91751832e673cb488724cbd003f01aa237615142cd2907f34fa1a2"\n}/' node_modules/@yao-pkg/pkg-fetch/lib-es5/expected-shas.json
+
+          # Replace any "v20..." key with "v20.11.1" in patches.json (keeps value)
+          sed -i -E 's/"v20[^"]*":/"v20.11.1":/' node_modules/@yao-pkg/pkg-fetch/patches/patches.json
+
+      - name: Build (package) application
+        run: npm run package
+        env:
+          # https://www.electronjs.org/docs/latest/api/environment-variables
+          ELECTRON_NO_ATTACH_CONSOLE: 'true'
+
+      - name: Run e2e tests (Linux)
+        if: runner.os == 'Linux'
+        run: npm run wdio
+        env:
+          ELECTRON_NO_ATTACH_CONSOLE: 'true'
